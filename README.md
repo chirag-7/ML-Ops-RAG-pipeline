@@ -1,8 +1,8 @@
-## What is this?
+## What is this
 
 A **production-oriented** playground for building and serving **Retrieval-Augmented Generation (RAG)** systems.
 
-## Why?
+## Why
 
 I wanted to build a **general-purpose RAG playground** rather than a narrow, specific application. This project is designed to explore and apply best practices in **MLOps** and **LLMOps**, focusing on modular, observable, and scalable RAG system deployment that can be adapted for any domain.
 
@@ -61,7 +61,7 @@ This system includes end-to-end observability using Prometheus for metrics colle
 <img src="assets/grafana-2.png" width="45%" />
 </p>
 <p float="left">
-<img src="assets/UI-1.png" width="45%" />
+<img src="assets/UI-1.png" width="45%" /> 
 <img src="assets/UI-2.png" width="45%" />
 </p>
 
