@@ -57,12 +57,12 @@ This system includes end-to-end observability using Prometheus for metrics colle
 **Example Dashboard & UI**
 
 <p float="left">
-<img src="assets/grafana-1.png" width="45%" />
-<img src="assets/grafana-2.png" width="45%" />
-</p>
-<p float="left">
 <img src="assets/UI-1.png" width="45%" /> 
 <img src="assets/UI-2.png" width="45%" />
+</p>
+<p float="left">
+<img src="assets/grafana-1.png" width="45%" />
+<img src="assets/grafana-2.png" width="45%" />
 </p>
 
 The dashboard offers visibility into system performance and model behavior during both ingestion and query stages. It can also be extended to include metrics provided by the BentoML endpoints.
