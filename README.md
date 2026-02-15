@@ -8,6 +8,8 @@ I wanted to build a **general-purpose RAG playground** rather than a narrow, spe
 
 ## What's Included?
 
+![rag-system](assets/rag-system.drawio.png)
+
 * **FastAPI** orchestrator with `/ingest` and `/query` endpoints
 * **BentoML** services for embeddings and generation
 * **Qdrant** as the vector database for retrieval
