@@ -1,0 +1,150 @@
+version: '3.8'
+services:
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  mlflow:
+    build:
+      context: ./mlflow-server
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+      - minio
+      - minio-init
+
+  bentoml-model:
+    build: ./bento-model-service
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mlflow
+
+  bentoml-embedding:
+    build: ./bento-embedding-service
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mlflow
+  rag-orchestrator:
+    build: ./rag-orchestrator
+    ports:
+      - "8000:8000"
+    depends_on:
+      - qdrant
+    env_file:
+      - ./rag-orchestrator/.env
+  streamlit-app:
+    build: ./streamlit-app
+    ports:
+      - "8501:8501"
+    depends_on:
+      - rag-orchestrator
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - rag-orchestrator
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "4000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongo
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: true
+      ME_CONFIG_BASICAUTH: false
+    depends_on:
+      - mongo
+
+  lakefs:
+    image: treeverse/lakefs
+    ports:
+      - "8001:8000"
+    environment:
+      LAKEFS_DATABASE_TYPE: postgres
+      LAKEFS_DATABASE_POSTGRES_CONNECTION_STRING: postgres://admin:admin@postgres:5432/lakefs?sslmode=disable
+      LAKEFS_BLOCKSTORE_TYPE: s3
+      LAKEFS_BLOCKSTORE_S3_FORCE_PATH_STYLE: true
+      LAKEFS_BLOCKSTORE_S3_ENDPOINT: http://minio:9000
+      LAKEFS_BLOCKSTORE_S3_CREDENTIALS_ACCESS_KEY_ID: minioadmin
+      LAKEFS_BLOCKSTORE_S3_CREDENTIALS_SECRET_ACCESS_KEY: minioadmin
+      LAKEFS_AUTH_ENCRYPT_SECRET_KEY: supersecretkeymustbe32bytes!
+    depends_on:
+      - minio
+      - postgres
+      - minio-init
+  minio-init:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+        sleep 5;
+        mc alias set local http://minio:9000 minioadmin minioadmin;
+        mc mb -p local/mlflow;
+        mc mb -p local/lakefs;
+        echo 'MinIO buckets initialized';
+      "
+
+volumes:
+  pg_data:
+  minio_data:
+  grafana_data:
+  mongo_data:
